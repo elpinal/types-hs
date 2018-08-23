@@ -20,6 +20,9 @@ data Type
   | Forall Type Type
   deriving (Eq, Show)
 
+class Shift a where
+  shift :: Int -> a -> a
+
 tymap :: (Int -> Int -> Type) -> Int -> Type -> Type
 tymap f = walk
   where
@@ -31,14 +34,18 @@ tymap f = walk
 shiftAbove :: Int -> Int -> Type -> Type
 shiftAbove c d = tymap (\c' n -> if n >= c' then TVar (n + d) else TVar n) c
 
-shift :: Int -> Type -> Type
-shift = shiftAbove 0
+instance Shift Type where
+  shift = shiftAbove 0
 
 subst :: Int -> Type -> Type -> Type
 subst j ty' = tymap (\c n -> if n == c + j then shift c ty' else TVar n) 0
 
 substTop :: Type -> Type -> Type
 substTop ty' ty = shift (-1) $ subst 0 (shift 1 ty') ty
+
+instance Shift Binding where
+  shift d (Term ty) = Term $ shift d ty
+  shift d (Type ty) = Type $ shift d ty
 
 data Binding
   = Term Type -- ^ @x:T@
@@ -54,7 +61,7 @@ nth (Context xs) n
   | otherwise = Left $ "unbound variable: " ++ show n
 
 append :: Context -> Binding -> Context
-append (Context xs) x = Context $ x : xs
+append (Context xs) x = Context $ map (shift 1) (x : xs)
 
 expose :: Context -> Type -> Either String Type
 expose ctx (TVar n) = nth ctx n >>= f
