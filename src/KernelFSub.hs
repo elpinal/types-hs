@@ -75,7 +75,7 @@ typeOf ctx (Var n) = nth ctx n >>= f
   where
     f (Term ty) = return ty
     f (Type _) = Left "unexpected error"
-typeOf ctx (Abs ty t) = (ty :->) <$> typeOf (append ctx $ Term ty) t
+typeOf ctx (Abs ty t) = (ty :->) . shift (-1) <$> typeOf (append ctx $ Term ty) t
 typeOf ctx (App t1 t2) = do
   ty1 <- typeOf ctx t1 >>= expose ctx
   case ty1 of
