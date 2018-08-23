@@ -52,6 +52,14 @@ data Binding
   | Type Type -- ^ @X<:T@
   deriving Show
 
+fromTermVar :: Binding -> Either String Type
+fromTermVar (Term ty) = return ty
+fromTermVar (Type _) = Left "not term variable"
+
+fromTypeVar :: Binding -> Either String Type
+fromTypeVar (Term _) = Left "not type variable"
+fromTypeVar (Type ty) = return ty
+
 newtype Context = Context { getContext :: [Binding] }
   deriving Show
 
@@ -64,34 +72,26 @@ append :: Context -> Binding -> Context
 append (Context xs) x = Context $ map (shift 1) (x : xs)
 
 expose :: Context -> Type -> Either String Type
-expose ctx (TVar n) = nth ctx n >>= f
-  where
-    f (Term _) = Left "unexpected error"
-    f (Type ty) = expose ctx ty
+expose ctx (TVar n) = nth ctx n >>= fromTypeVar >>= expose ctx
 expose _ ty = return ty
 
 typeOf :: Context -> Term -> Either String Type
-typeOf ctx (Var n) = nth ctx n >>= f
-  where
-    f (Term ty) = return ty
-    f (Type _) = Left "unexpected error"
+typeOf ctx (Var n) = nth ctx n >>= fromTermVar
 typeOf ctx (Abs ty t) = (ty :->) . shift (-1) <$> typeOf (append ctx $ Term ty) t
-typeOf ctx (App t1 t2) = do
-  ty1 <- typeOf ctx t1 >>= expose ctx
-  case ty1 of
-    ty11 :-> ty12 -> do
+typeOf ctx (App t1 t2) = typeOf ctx t1 >>= expose ctx >>= f
+  where
+    f (ty11 :-> ty12) = do
       ty2 <- typeOf ctx t2
       isSubtypeOf ctx ty2 ty11
       return ty12
-    _ -> Left "application of non-function"
+    f _ = Left "application of non-function"
 typeOf ctx (TAbs ty t) = Forall ty <$> typeOf (append ctx $ Type ty) t
-typeOf ctx (TApp t ty2) = do
-  ty1 <- typeOf ctx t >>= expose ctx
-  case ty1 of
-    Forall ty11 ty12 -> do
+typeOf ctx (TApp t ty2) = typeOf ctx t >>= expose ctx >>= f
+  where
+    f (Forall ty11 ty12) = do
       isSubtypeOf ctx ty2 ty11
       return $ substTop ty2 ty12
-    _ -> Left "type application of non-polymorphic function"
+    f _ = Left "type application of non-polymorphic function"
 
 isSubtypeOf :: Context -> Type -> Type -> Either String ()
 isSubtypeOf _ _ Top = return ()
@@ -100,8 +100,5 @@ isSubtypeOf ctx (Forall u1 ty1) (Forall u2 ty2)
   | u1 == u2 = isSubtypeOf (append ctx $ Type u1) ty1 ty2
   | otherwise = Left "kernel F<: accepts only the limited rule for quantification"
 isSubtypeOf _ (TVar m) (TVar n) | m == n = return ()
-isSubtypeOf ctx (TVar n) ty1 = nth ctx n >>= f
-  where
-    f (Term _) = Left "unexpected error"
-    f (Type ty2) = isSubtypeOf ctx ty2 ty1
+isSubtypeOf ctx (TVar n) ty1 = nth ctx n >>= fromTypeVar >>= \ty2 -> isSubtypeOf ctx ty2 ty1
 isSubtypeOf _ ty1 ty2 = Left $ show ty1 ++ " is not subtype of " ++ show ty2
