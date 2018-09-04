@@ -180,7 +180,7 @@ instance Substitution Type where
   apply s (RecordType m) = RecordType $ apply s <$> m
 
 instance Substitution PolyType where
-  apply s (PolyType (m, ty)) = PolyType (m, apply (s \\ Map.keysSet m) ty)
+  apply s (PolyType (m, ty)) = PolyType (apply (s \\ Map.keysSet m) <$> m, apply (s \\ Map.keysSet m) ty)
 
 instance Substitution Context where
   apply s (Context xs) = Context $ apply s <$> xs
