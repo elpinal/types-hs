@@ -180,6 +180,10 @@ instance Substitution Type where
   apply s (RecordType m) = RecordType $ apply s <$> m
 
 instance Substitution PolyType where
+  -- TODO:
+  -- Need investigation: this definition of @apply@ can cause capturing.
+  -- If there is any expression of the form @apply s pt@ such that @FTV(s)@ is
+  -- a subset of @Map.keysSet (quantifiers pt)@, this definition needs to be refined.
   apply s (PolyType (m, ty)) = PolyType (apply (s \\ Map.keysSet m) <$> m, apply (s \\ Map.keysSet m) ty)
 
 instance Substitution Context where
