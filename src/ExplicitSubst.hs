@@ -14,15 +14,15 @@ module ExplicitSubst
 data Expr f = In (f (Expr f))
 
 data Term a
-  = Var
+  = Var Int
   | Abs a
   | App a a
 
 term :: Term (Expr ETerm) -> Expr ETerm
 term = In . Inl
 
-var :: Expr ETerm
-var = term Var
+var :: Int -> Expr ETerm
+var = term . Var
 
 lam :: Expr ETerm -> Expr ETerm
 lam = term . Abs
@@ -46,7 +46,7 @@ data ETerm a
   | Inr (Explicit a)
 
 instance Functor Term where
-  fmap _ Var = Var
+  fmap _ (Var n) = Var n
   fmap f (Abs x) = Abs $ f x
   fmap f (App x y) = App (f x) (f y)
 
@@ -73,7 +73,7 @@ pretty :: Render f => Expr f -> String
 pretty (In x) = render x
 
 instance Render Term where
-  render Var = "0"
+  render (Var n) = show n
   render (Abs t) = "(lamda." ++ pretty t ++ ")"
   render (App t1 t2) = "(" ++ pretty t1 ++ " " ++ pretty t2 ++ ")"
 
