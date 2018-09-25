@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+
 module ExplicitSystemF
   ( Expr(..)
   , Term(..)
@@ -21,6 +23,7 @@ data Term a
   = Var Int
   | Forall a
   | Arr a a
+  deriving Functor
 
 term :: Term (Expr ETerm) -> Expr ETerm
 term = In . Inl
@@ -35,6 +38,7 @@ arr :: Expr ETerm -> Expr ETerm -> Expr ETerm
 arr x y = term $ Arr x y
 
 data Explicit a = Explicit a (Subst a)
+  deriving Functor
 
 explicit :: Expr ETerm -> Subst (Expr ETerm) -> Expr ETerm
 explicit e = In . Inr . Explicit e
@@ -44,28 +48,12 @@ data Subst a
   | Shift
   | Cons a (Subst a)
   | Comp (Subst a) (Subst a)
+  deriving Functor
 
 data ETerm a
   = Inl (Term a)
   | Inr (Explicit a)
-
-instance Functor Term where
-  fmap _ (Var n) = Var n
-  fmap f (Forall x) = Forall $ f x
-  fmap f (Arr x y) = Arr (f x) (f y)
-
-instance Functor Explicit where
-  fmap f (Explicit x y) = Explicit (f x) $ fmap f y
-
-instance Functor Subst where
-  fmap _ Id = Id
-  fmap _ Shift = Shift
-  fmap f (Cons x y) = Cons (f x) $ fmap f y
-  fmap f (Comp x y) = Comp (fmap f x) $ fmap f y
-
-instance Functor ETerm where
-  fmap f (Inl t) = Inl $ fmap f t
-  fmap f (Inr s) = Inr $ fmap f s
+  deriving Functor
 
 foldExpr :: Functor f => (f a -> a) -> Expr f -> a
 foldExpr f (In x) = f $ foldExpr f <$> x
