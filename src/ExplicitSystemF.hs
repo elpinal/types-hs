@@ -14,6 +14,7 @@ module ExplicitSystemF
   , nf
   , reduce
   , equal
+  , substTop
   ) where
 
 import Control.Monad.Trans.State
@@ -140,3 +141,6 @@ equalS (In x) u1 (In y) u2 =
 
 equal :: Expr ETerm -> Expr ETerm -> Bool
 equal x y = equalS x Id y Id
+
+substTop :: Expr ETerm -> Expr ETerm -> Expr ETerm
+substTop x y = explicit x $ Cons y Id
