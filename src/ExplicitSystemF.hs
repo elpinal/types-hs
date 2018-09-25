@@ -13,6 +13,7 @@ module ExplicitSystemF
   , foldExpr
   , nf
   , reduce
+  , equal
   ) where
 
 import Control.Monad.Trans.State
@@ -117,9 +118,25 @@ nf :: Whnf f => f (Expr ETerm) -> Subst (Expr ETerm) -> Expr Term
 nf x s0 =
   let (y, s) = runState (whnf x) s0 in
     case y of
-      Forall (In a) -> In $ Forall $ nf a $ (explicit (var 0) Id) `Cons` (Comp s Shift)
+      Forall (In a) -> In $ Forall $ nf a $ beta s
       Arr (In a) (In b) -> In $ nf a s `Arr` nf b s
       Var n -> In $ Var n
 
 reduce :: Expr ETerm -> Expr Term
 reduce (In e) = nf e Id
+
+beta :: Subst (Expr ETerm) -> Subst (Expr ETerm)
+beta s = explicit (var 0) Id `Cons` Comp s Shift
+
+equalS :: Expr ETerm -> Subst (Expr ETerm) -> Expr ETerm -> Subst (Expr ETerm) -> Bool
+equalS (In x) u1 (In y) u2 =
+  let (a, s1) = runState (whnf x) u1 in
+  let (b, s2) = runState (whnf y) u2 in
+  case (a, b) of
+    (Var m, Var n) -> m == n
+    (Arr t11 t12, Arr t21 t22) -> equalS t11 s1 t21 s2 && equalS t12 s1 t22 s2
+    (Forall t1, Forall t2) -> equalS t1 (beta s1) t2 (beta s2)
+    _ -> False
+
+equal :: Expr ETerm -> Expr ETerm -> Bool
+equal x y = equalS x Id y Id
