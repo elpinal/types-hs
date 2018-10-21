@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -O0 #-}
+
 module ExplicitSubst
   ( Expr(..)
   , Term(..)
