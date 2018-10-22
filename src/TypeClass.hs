@@ -2,7 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module TypeClass
-  ( recon
+  ( reconstruct
+  , recon
   , Expr(..)
   , Type(..)
   , Ident(..)
@@ -125,6 +126,9 @@ assump n = do
   if 0 <= n && n < length xs
     then return $ xs !! n
     else throwError $ UnboundVariable n
+
+reconstruct :: Assump -> Expr -> Either TypeError (Type, Set.Set Pred)
+reconstruct a e = run $ runError $ evalState a $ evalState (Ident 0) $ evalState emptySubst $ recon e
 
 recon :: Members '[State Assump, State Subst, State Ident, Error TypeError] r => Expr -> Eff r (Type, Set.Set Pred)
 recon (Var n) = do
