@@ -3,8 +3,8 @@
 - Bounded quantification
     - Type inference of ML polymorphism extended with bounded quantification.
     - Type check of System F extended with bounded quantification.
-
 - Explicit substitutions
+- Type classes
 
 ## References
 
@@ -13,3 +13,5 @@
 - Benjamin C. Pierce, _Types and Programming Languages_, MIT Press, 2002.
 - Martín Abadi, Luca Cardelli, Pierre-Louis Curien, and Jean-Jacques Lévy. Explicit substitutions. _Journal of Functional Programming_, 1(4):375-416, October 1991.
 - Wouter Swierstra. Data types à la carte. _Journal of Functional Programming_, 18: 423–436. Cambridge University Press, 2008.
+- Philip Wadler and Stephen Blott. How to Make ad-hoc Polymorphism Less ad-hoc. Conference Record of the Sixteenth Annual ACM Symposium on Principles of Programming Languages, Austin, Texas, USA, January 11-13, 1989, ACM Press, pp. 60–76.
+- Mark P. Jones. A theory of qualified types. European Symposium on Programming, Rennes, France, Springer-Verlag Lecture Notes in Computer Science, 582, February 1992.
