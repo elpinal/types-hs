@@ -39,6 +39,8 @@ data Qual = Qual (Set.Set Pred) Type
 newtype Ident = Ident Int
   deriving (Eq, Ord, Show)
 
+infixr 9 :->
+
 data Type
   = TVar Ident
   | Type :-> Type
