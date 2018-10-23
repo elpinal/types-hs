@@ -38,3 +38,10 @@ spec = do
             , scheme Int
             ]
           ) (Var 0 `App` (Var 1 `App` Var 2)) `shouldBe` return (Int, Set.singleton $ ty2 :< clA)
+        reconstruct (
+          Assump
+            [ Scheme (Set.singleton i) $ Qual (Set.singleton $ TVar i :< clA) $ TVar i :-> Int
+            , Scheme (Set.singleton i) $ Qual (Set.singleton $ TVar i :< clA) $ Int :-> TVar i
+            , scheme Int
+            ]
+          ) (Let (Var 0 `App` (Var 1 `App` Var 2)) $ Var 0) `shouldBe` Left (Ambiguous $ Scheme (Set.singleton $ Ident 2) $ Qual (Set.singleton $ ty2 :< clA) Int)

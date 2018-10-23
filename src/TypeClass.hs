@@ -63,6 +63,7 @@ data TypeError
   = Recursive Ident Type
   | NoUnifier Type Type
   | UnboundVariable Int
+  | Ambiguous Scheme
   deriving (Eq, Show)
 
 newtype Subst = Subst (Map.Map Ident Type)
@@ -162,7 +163,12 @@ recon (App e1 e2) = do
 recon (Let e1 e2) = do
   (ty1, p) <- recon e1
   tyS <- close $ Qual p ty1
-  local tyS $ recon e2
+  if unambiguous tyS
+    then local tyS $ recon e2
+    else throwError $ Ambiguous tyS
+
+unambiguous :: Scheme -> Bool
+unambiguous (Scheme is (Qual p ty)) = (is `Set.intersection` foldMap ftv p) `Set.isSubsetOf` ftv ty
 
 applyAssump :: Member (State Assump) r => Subst -> Eff r ()
 applyAssump = modify . mapAssump . fmap . apply
