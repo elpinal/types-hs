@@ -11,6 +11,7 @@ module TypeClass
   , Subst(..)
   , Pred(..)
   , Scheme(..)
+  , scheme
   , Class(..)
   , Qual(..)
   , TypeError(..)
