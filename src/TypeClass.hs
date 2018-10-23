@@ -20,8 +20,8 @@ module TypeClass
 import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Control.Monad.Freer.State
-import qualified Data.Set as Set
 import qualified Data.Map.Lazy as Map
+import qualified Data.Set as Set
 
 data Expr
   = Var Int
