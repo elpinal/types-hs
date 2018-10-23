@@ -85,6 +85,12 @@ instance Substitution Type where
 instance Substitution Pred where
   apply s (ty :< c) = apply s ty :< c
 
+instance Substitution Qual where
+  apply s (Qual p ty) = Qual (Set.map (apply s) p) $ apply s ty
+
+instance Substitution Scheme where
+  apply s (Scheme is q) = Scheme is $ apply s q -- FIXME
+
 class Ftv a where
   ftv :: a -> Set.Set Ident
 
@@ -150,11 +156,16 @@ recon (App e1 e2) = do
   tyR <- freshTVar
   s <- get
   u <- unify (apply s ty1) $ ty2 :-> tyR
+  applyAssump u
+  modify (u @@)
   return (apply u tyR, Set.map (apply u) $ Set.map (apply s) p <> q)
 recon (Let e1 e2) = do
   (ty1, p) <- recon e1
   tyS <- close $ Qual p ty1
   local tyS $ recon e2
+
+applyAssump :: Member (State Assump) r => Subst -> Eff r ()
+applyAssump = modify . mapAssump . fmap . apply
 
 close :: Members '[State Assump] r => Qual -> Eff r Scheme
 close q = do
