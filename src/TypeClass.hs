@@ -66,6 +66,7 @@ data TypeError
   deriving (Eq, Show)
 
 newtype Subst = Subst (Map.Map Ident Type)
+  deriving (Eq, Show)
 
 emptySubst :: Subst
 emptySubst = Subst mempty
