@@ -78,6 +78,9 @@ i |-> ty = Subst $ Map.singleton i ty
 class Substitution a where
   apply :: Subst -> a -> a
 
+instance (Ord a, Substitution a) => Substitution (Set.Set a) where
+  apply = Set.map . apply
+
 instance Substitution Type where
   apply _ Int = Int
   apply s (t1 :-> t2) = apply s t1 :-> apply s t2
@@ -87,7 +90,7 @@ instance Substitution Pred where
   apply s (ty :< c) = apply s ty :< c
 
 instance Substitution Qual where
-  apply s (Qual p ty) = Qual (Set.map (apply s) p) $ apply s ty
+  apply s (Qual p ty) = Qual (apply s p) $ apply s ty
 
 instance Substitution Scheme where
   apply s (Scheme is q) = Scheme is $ apply s q -- FIXME
@@ -145,7 +148,7 @@ recon :: Members '[State Assump, State Subst, State Ident, Error TypeError] r =>
 recon (Var n) = do
   Scheme is (Qual p ty) <- assump n
   s <- fmap Subst $ sequence $ Map.fromSet (const freshTVar) is
-  return (apply s ty, Set.map (apply s) p)
+  return (apply s ty, apply s p)
 recon (Abs e) = do
   ty1 <- freshTVar
   (ty2, p) <- local (scheme ty1) $ recon e
@@ -159,7 +162,7 @@ recon (App e1 e2) = do
   u <- unify (apply s ty1) $ ty2 :-> tyR
   applyAssump u
   modify (u @@)
-  return (apply u tyR, Set.map (apply u) $ Set.map (apply s) p <> q)
+  return (apply u tyR, apply u $ apply s p <> q)
 recon (Let e1 e2) = do
   (ty1, p) <- recon e1
   tyS <- close $ Qual p ty1
