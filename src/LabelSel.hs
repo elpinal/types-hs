@@ -44,7 +44,7 @@ var :: Int -> Term
 var = Var . Variable
 
 def :: Label
-def = Label (Symbol "_") 0
+def = Label (Symbol "_") 1
 
 abs_ :: Term -> Term
 abs_ = Abs def
