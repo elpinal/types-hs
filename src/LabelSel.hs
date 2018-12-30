@@ -9,28 +9,45 @@ import GHC.Generics
 import Index
 
 newtype Symbol = Symbol String
-  deriving (Eq, Show)
+  deriving Eq
+
+instance Show Symbol where
+  show (Symbol s) = s
 
 data Label = Label Symbol Int
-  deriving (Eq, Show)
+  deriving Eq
+
+instance Show Label where
+  show (Label s n) = "[" ++ show s ++ "^" ++ show n ++ "]"
 
 sub :: Label -> Label
 sub (Label s n) = Label s $ n - 1
 
 newtype Variable = Variable Int
-  deriving (Eq, Show)
+  deriving Eq
+
+instance Show Variable where
+  show (Variable n) = "v" ++ show n
 
 data Term
   = Var Variable
   | Abs Label Term
   | App Label Term Term
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Generic)
+
+instance Show Term where
+  showsPrec n (Var v) = shows v
+  showsPrec n (Abs l t) = showParen (n >= 10) $ showString "lam " . shows l . showString ". " . showsPrec n t
+  showsPrec n (App l t1 t2) = showParen (n > 10) $ showsPrec 10 t1 . showString " " . shows l . showString " " . showsPrec 11 t2
+
+var :: Int -> Term
+var = Var . Variable
 
 def :: Label
-def = Label (Symbol "default") 0
+def = Label (Symbol "_") 0
 
-abs :: Term -> Term
-abs = Abs def
+abs_ :: Term -> Term
+abs_ = Abs def
 
 app :: Term -> Term -> Term
 app = App def
