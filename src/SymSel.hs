@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module LabelSel
+module SymSel
   (
   ) where
 
