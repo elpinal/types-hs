@@ -71,3 +71,19 @@ spec = do
 
     it "is associative" $ property $
       \(r, s, t) -> r `concatR` s `concatR` t `shouldBe` (concatR r $ concatR s t)
+
+  describe "typecheck" $
+    it "typechecks a term" $ do
+      let int = Lit . LInt
+      let bool = Lit . LBool
+
+      typecheck (int 4) `shouldBe` return (Base Int)
+      typecheck (bool False) `shouldBe` return (Base Bool)
+
+      typecheck (abs_ l ty $ int 4) `shouldBe` return (Record (Map.singleton l ty) :-> Int)
+      typecheck (abs_ l ty $ var 0) `shouldBe` return (Record (Map.singleton l ty) :-> Int)
+      typecheck (abs_ l ty $ abs_ l ty $ var 0) `shouldBe` return (Record (Map.fromList [(l, ty), (Label sym 2, ty)]) :-> Int)
+
+      typecheck (app l (abs_ l ty $ bool False) $ bool True) `shouldBe` Left (TypeMismatch ty $ Base Bool)
+      typecheck (app l (abs_ l ty $ bool False) $ int 128)   `shouldBe` return (mempty :-> Bool) -- `{} -> bool` and `bool` is identified.
+      typecheck (app l1 (abs_ l ty $ bool False) $ int 128)  `shouldBe` Left (UnboundLabel l1)

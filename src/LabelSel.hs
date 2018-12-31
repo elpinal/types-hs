@@ -7,6 +7,7 @@
 module LabelSel
   ( typecheck
   , Term(..)
+  , Literal(..)
   , Variable(..)
   , Label(..)
   , Symbol(..)
@@ -16,6 +17,10 @@ module LabelSel
   , concatR
   , adjust
   , free
+  , var
+  , abs_
+  , app
+  , TypeError(..)
   ) where
 
 import GHC.Generics
@@ -81,11 +86,11 @@ var = Var . Variable
 def :: Label
 def = Label (Symbol "_") 1
 
-abs_ :: Type -> Term -> Term
-abs_ = Abs def . Fixed
+abs_ :: Label -> Type -> Term -> Term
+abs_ l = Abs l . Fixed
 
-app :: Term -> Term -> Term
-app = App def
+app :: Label -> Term -> Term -> Term
+app = App
 
 data Base
   = Int
