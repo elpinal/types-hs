@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module LabelSelSpec where
 
 import Test.Hspec
@@ -43,6 +45,9 @@ spec = do
   let l = Label sym 1
   let ty = Base Int
 
+  let sym1 = Symbol "s1"
+  let l1 = Label sym1 1
+
   describe "free" $
     it "adjusts a record by another record" $ do
       free mempty sym 1 `shouldBe` 1
@@ -53,8 +58,16 @@ spec = do
 
   describe "concatR" $ do
     it "concatenates two records" $ do
-      mempty `concatR` mempty `shouldBe` mempty
-      mempty `concatR` (Record $ Map.singleton l ty) `shouldBe` Record (Map.singleton l ty)
+      mempty `concatR` mempty                                                       `shouldBe` mempty
+      mempty `concatR` (Record $ Map.singleton l ty)                                `shouldBe` Record (Map.singleton l ty)
+      Record (Map.singleton l $ Base Bool) `concatR` (Record $ Map.singleton l ty)  `shouldBe` Record (Map.fromList [(l, Base Bool), (Label sym 2, ty)])
+      Record (Map.singleton l1 $ Base Bool) `concatR` (Record $ Map.singleton l ty) `shouldBe` Record (Map.fromList [(l1, Base Bool), (l, ty)])
 
     it "the empty record is the right unit" $ property $
       \r -> r `concatR` mempty `shouldBe` r
+
+    it "the empty record is the left unit" $ property $
+      \r -> mempty `concatR` r `shouldBe` r
+
+    it "is associative" $ property $
+      \(r, s, t) -> r `concatR` s `concatR` t `shouldBe` (concatR r $ concatR s t)
