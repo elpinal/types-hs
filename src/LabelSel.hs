@@ -14,7 +14,9 @@ import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Control.Monad.Freer.Reader
 import Data.Coerce
+import Data.List hiding (union)
 import qualified Data.Map.Lazy as Map
+import Data.Monoid
 
 import Index
 
@@ -28,7 +30,7 @@ data Label = Label Symbol Int
   deriving (Eq, Ord)
 
 instance Show Label where
-  show (Label s n) = "[" ++ show s ++ "^" ++ show n ++ "]"
+  show (Label s n) = "?" ++ show s ++ show n
 
 sub :: Label -> Label
 sub (Label s n) = Label s $ n - 1
@@ -65,15 +67,30 @@ app = App def
 data Base
   = Int
   | Bool
-  deriving (Eq, Show)
+  deriving Eq
+
+instance Show Base where
+  show Int = "int"
+  show Bool = "bool"
 
 data Type
   = Base Base
   | Record :-> Base
-  deriving (Eq, Show)
+  deriving Eq
+
+infixr 3 :->
+
+instance Show Type where
+  showsPrec n (Base b) = showsPrec n b
+  showsPrec n (r :-> b) = showParen (n > 3) $ showsPrec 4 r . showString " -> " . showsPrec 3 b
 
 newtype Record = Record (Map.Map Label Type)
-  deriving (Eq, Show, Semigroup, Monoid)
+  deriving (Eq, Semigroup, Monoid)
+
+instance Show Record where
+  showsPrec _ (Record m) = showChar '{' . h . showChar '}'
+    where
+      h = appEndo $ foldMap Endo $ intersperse id $ map (\(l, ty) -> shows l . showString " => " . shows ty) $ Map.assocs m
 
 union :: Record -> Record -> Record
 union (Record m) = coerce $ Map.union m
