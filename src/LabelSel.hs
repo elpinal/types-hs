@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -47,16 +48,28 @@ newtype Variable = Variable Int
 instance Show Variable where
   show (Variable n) = "v" ++ show n
 
+data Literal
+  = LInt Int
+  | LBool Bool
+  deriving Eq
+  deriving Shift via Fixed Literal
+
+instance Show Literal where
+  show (LInt n) = show n
+  show (LBool b) = show b
+
 data Term
   = Var Variable
   | Abs Label (Fixed Type) Term
   | App Label Term Term
+  | Lit Literal
   deriving (Eq, Generic)
 
 instance Show Term where
   showsPrec n (Var v) = shows v
   showsPrec n (Abs l ty t) = showParen (n >= 10) $ showString "lam " . shows l . showString " : " . shows ty . showString ". " . showsPrec n t
   showsPrec n (App l t1 t2) = showParen (n > 10) $ showsPrec 10 t1 . showString " " . shows l . showString " " . showsPrec 11 t2
+  showsPrec n (Lit l) = showsPrec n l
 
 var :: Int -> Term
 var = Var . Variable
@@ -138,6 +151,7 @@ reduce (App l @ (Label s n) t1 t2) =
       | otherwise -> Abs l' ty $ App (sub l) t $ shift 1 t2'
     t1' -> App l t1' $ reduce t2'
   where t2' = reduce t2
+reduce t @ (Lit _) = t
 
 substTop :: Term -> Term -> Term
 substTop by t = shift (-1) $ subst 0 (shift 1 by) t
@@ -165,6 +179,7 @@ instance Subst Term where
         | otherwise             = Var v
       walk c (Abs l ty t) = Abs l ty $ walk (c + 1) t
       walk c (App l t1 t2) = App l (walk c t1) (walk c t2)
+      walk _ t @ (Lit _) = t
 
 newtype Context = Context [Type]
   deriving (Eq, Show)
@@ -189,6 +204,10 @@ instance Typed Variable where
       then return $ xs !! n
       else throwError $ UnboundVariable n
 
+instance Typed Literal where
+  typeOf (LInt _) = return $ Base Int
+  typeOf (LBool _) = return $ Base Bool
+
 separate :: Member (Error TypeError) r => Label -> Record -> Eff r (Type, Record)
 separate l (Record m) =
   case Map.lookup l m of
@@ -212,6 +231,7 @@ instance Typed Term where
           throwError $ TypeMismatch ty ty2
         return $ match (Record $ Map.singleton l ty) s :-> b
       _ -> throwError $ NotFunction ty1
+  typeOf (Lit l) = typeOf l
 
 typecheck :: Term -> Either TypeError Type
 typecheck t = run $ runError $ runReader (Context mempty) $ typeOf t
