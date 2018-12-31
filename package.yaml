@@ -49,3 +49,4 @@ tests:
     dependencies:
     - types
     - hspec
+    - QuickCheck

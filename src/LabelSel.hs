@@ -12,6 +12,10 @@ module LabelSel
   , Symbol(..)
   , Type(..)
   , Base(..)
+  , Record(..)
+  , concatR
+  , adjust
+  , free
   ) where
 
 import GHC.Generics
