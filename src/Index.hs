@@ -5,6 +5,7 @@
 module Index
   ( Shift(..)
   , GShift(..)
+  , Fixed(..)
   ) where
 
 import GHC.Generics
@@ -37,3 +38,9 @@ instance GShift a => GShift (M1 i c a) where
 
 instance Shift a => GShift (K1 i a) where
   gShiftAbove c d (K1 x) = K1 $ shiftAbove c d x
+
+newtype Fixed a = Fixed { getFixed :: a }
+  deriving (Eq, Show)
+
+instance Shift (Fixed a) where
+  shiftAbove _ _ x = x
