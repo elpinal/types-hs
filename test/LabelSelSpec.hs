@@ -77,11 +77,11 @@ spec = do
       let int = Lit . LInt
       let bool = Lit . LBool
 
-      typecheck (int 4) `shouldBe` return (Base Int)
+      typecheck (int 4)      `shouldBe` return (Base Int)
       typecheck (bool False) `shouldBe` return (Base Bool)
 
-      typecheck (abs_ l ty $ int 4) `shouldBe` return (Record (Map.singleton l ty) :-> Int)
-      typecheck (abs_ l ty $ var 0) `shouldBe` return (Record (Map.singleton l ty) :-> Int)
+      typecheck (abs_ l ty $ int 4)             `shouldBe` return (Record (Map.singleton l ty) :-> Int)
+      typecheck (abs_ l ty $ var 0)             `shouldBe` return (Record (Map.singleton l ty) :-> Int)
       typecheck (abs_ l ty $ abs_ l ty $ var 0) `shouldBe` return (Record (Map.fromList [(l, ty), (Label sym 2, ty)]) :-> Int)
 
       typecheck (app l (abs_ l ty $ bool False) $ bool True) `shouldBe` Left (TypeMismatch ty $ Base Bool)
