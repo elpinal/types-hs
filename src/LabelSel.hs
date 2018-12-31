@@ -4,7 +4,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module LabelSel
-  (
+  ( typecheck
+  , Term(..)
+  , Variable(..)
+  , Label(..)
+  , Symbol(..)
+  , Type(..)
+  , Base(..)
   ) where
 
 import GHC.Generics
@@ -206,3 +212,6 @@ instance Typed Term where
           throwError $ TypeMismatch ty ty2
         return $ match (Record $ Map.singleton l ty) s :-> b
       _ -> throwError $ NotFunction ty1
+
+typecheck :: Term -> Either TypeError Type
+typecheck t = run $ runError $ runReader (Context mempty) $ typeOf t
