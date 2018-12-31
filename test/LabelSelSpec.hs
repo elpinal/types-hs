@@ -87,3 +87,8 @@ spec = do
       typecheck (app l (abs_ l ty $ bool False) $ bool True) `shouldBe` Left (TypeMismatch ty $ Base Bool)
       typecheck (app l (abs_ l ty $ bool False) $ int 128)   `shouldBe` return (mempty :-> Bool) -- `{} -> bool` and `bool` is identified.
       typecheck (app l1 (abs_ l ty $ bool False) $ int 128)  `shouldBe` Left (UnboundLabel l1)
+
+      typecheck (app l (abs_ l (Base Bool) $ abs_ l ty $ bool False) $ int 128)                                 `shouldBe` Left (TypeMismatch (Base Bool) ty)
+      typecheck (app l (app l (abs_ l (Base Bool) $ abs_ l ty $ bool False) $ bool True) $ int 128)             `shouldBe` return (mempty :-> Bool)
+      typecheck (app l (app l (abs_ l (Base Bool) $ abs_ l ty $ bool False) $ int 128) $ bool True)             `shouldBe` Left (TypeMismatch (Base Bool) ty)
+      typecheck (app l (app (Label sym 2) (abs_ l (Base Bool) $ abs_ l ty $ bool False) $ int 128) $ bool True) `shouldBe` return (mempty :-> Bool)
