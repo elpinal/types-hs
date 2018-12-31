@@ -46,7 +46,7 @@ data Label = Label Symbol Int
   deriving (Eq, Ord)
 
 instance Show Label where
-  show (Label s n) = "?" ++ show s ++ show n
+  show (Label s n) = "?" ++ show s ++ "." ++ show n
 
 sub :: Label -> Label
 sub (Label s n) = Label s $ n - 1
