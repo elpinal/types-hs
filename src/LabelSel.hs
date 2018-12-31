@@ -119,7 +119,7 @@ union :: Record -> Record -> Record
 union (Record m) = coerce $ Map.union m
 
 free :: Record -> Symbol -> Int -> Int
-free (Record m) s n = minimum [ i | i <- [1, 2 ..], i - f i == n]
+free (Record m) s n = head [ i | i <- [1, 2 ..], i - f i == n]
   where
     f i = Map.size $ Map.filterWithKey (\(Label s' j) _ -> s' == s && j <= i) m
 
