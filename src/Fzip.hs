@@ -176,3 +176,11 @@ instance Typed Term where
     ty2 <- typeOf t
     pop
     return $ ty1 :-> shift (-1) ty2
+  typeOf (App t1 t2) = do
+    ty1 <- typeOf t1
+    ty2 <- typeOf t2
+    case ty1 of
+      ty11 :-> ty12
+        | ty11 == ty2 -> return ty12
+        | otherwise   -> throwError $ TypeMismatch ty11 ty2
+      _ -> throwError $ NotFunction ty1

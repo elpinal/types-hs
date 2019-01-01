@@ -52,3 +52,16 @@ spec = do
       tc [Universal] (Abs (Forall $ tvar 0) $ var 0) `shouldBe` return (Forall (tvar 0) :-> Forall (tvar 0), Context [Universal])
 
       typecheck emp (Abs IntType $ Abs IntType $ var 0) `shouldBe` return (IntType :-> IntType :-> IntType, Context [])
+
+
+      typecheck emp (Abs IntType (var 0) `App` var 0)                             `shouldBe` Left (UnboundVariable $ Variable 0)
+      typecheck emp (Abs (IntType :-> IntType) (var 0) `App` Abs IntType (var 0)) `shouldBe` return (IntType :-> IntType, emp)
+      typecheck emp (Abs IntType (var 0) `App` Abs IntType (var 0))               `shouldBe` Left (TypeMismatch IntType $ IntType :-> IntType)
+
+      tc [Universal] (Abs (tvar 0) (var 0) `App` var 0) `shouldBe` Left (NotTermBinding Universal)
+
+      let bs = [Term $ tvar 1, Universal] in
+        tc bs (Abs (tvar 1) (var 0) `App` var 0) `shouldBe` return (tvar 1, Context bs)
+
+      let bs = [Term $ tvar 1, Existential] in
+        tc bs (Abs (tvar 1) (var 0) `App` var 0) `shouldBe` Left (IllFormedOnPureContext (tvar 1) $ Context bs)
