@@ -6,6 +6,7 @@ module Index
   ( Shift(..)
   , GShift(..)
   , Fixed(..)
+  , IndexedVariable(..)
   ) where
 
 import GHC.Generics
@@ -44,3 +45,11 @@ newtype Fixed a = Fixed { getFixed :: a }
 
 instance Shift (Fixed a) where
   shiftAbove _ _ x = x
+
+newtype IndexedVariable = IndexedVariable { getIndexedVariable :: Int }
+  deriving (Eq, Show)
+
+instance Shift IndexedVariable where
+  shiftAbove c d v @ (IndexedVariable n)
+    | c <= n    = IndexedVariable $ n + d
+    | otherwise = v

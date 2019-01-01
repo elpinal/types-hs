@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 module Fzip
@@ -65,6 +66,7 @@ infixr 0 :->
 
 newtype Variable = Variable Int
   deriving (Eq, Ord, Show)
+  deriving Shift via IndexedVariable
 
 newtype Context = Context [Binding]
   deriving (Eq, Show)
@@ -94,11 +96,6 @@ instance Shift Type where
   shiftAbove c d (Forall ty) = Forall $ shiftAbove (c + 1) d ty
   shiftAbove c d (Some ty) = Some $ shiftAbove (c + 1) d ty
   shiftAbove c d ty = to $ gShiftAbove c d $ from ty
-
-instance Shift Variable where
-  shiftAbove c d v @ (Variable n)
-    | c <= n    = Variable $ n + d
-    | otherwise = v
 
 instance Shift a => Shift (Record a) where
   shiftAbove c d (Record m) = Record $ shiftAbove c d <$> m
