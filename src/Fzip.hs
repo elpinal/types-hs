@@ -94,8 +94,8 @@ instance Shift Binding
 
 instance Shift Type where
   shiftAbove c d (Forall ty) = Forall $ shiftAbove (c + 1) d ty
-  shiftAbove c d (Some ty) = Some $ shiftAbove (c + 1) d ty
-  shiftAbove c d ty = to $ gShiftAbove c d $ from ty
+  shiftAbove c d (Some ty)   = Some $ shiftAbove (c + 1) d ty
+  shiftAbove c d ty          = to $ gShiftAbove c d $ from ty
 
 instance Shift a => Shift (Record a) where
   shiftAbove c d (Record m) = Record $ shiftAbove c d <$> m
@@ -127,19 +127,18 @@ nth v @ (Variable n) (Context bs)
 
 fromTermBinding :: Member (Error TypeError) r => Binding -> Eff r Type
 fromTermBinding (Term ty) = return ty
-fromTermBinding b = throwError $ NotTermBinding b
+fromTermBinding b         = throwError $ NotTermBinding b
 
 wfPure :: Members Env r => Type -> Eff r ()
 wfPure ty = do
   ctx <- get
-  let vs = ftv ty
-  forM_ vs $ \v -> do
+  forM_ (ftv ty) $ \v -> do
     b <- nth v ctx
     case b of
       Existential -> throwError $ IllFormedOnPureContext ty ctx
-      Def ty' -> wfPure ty'
-      Universal -> return ()
-      Term _ -> throwError $ NotTypeBinding b
+      Def ty'     -> wfPure ty'
+      Universal   -> return ()
+      Term _      -> throwError $ NotTypeBinding b
 
 type Env = '[State Context, Error TypeError]
 
