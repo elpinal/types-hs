@@ -51,4 +51,4 @@ spec = do
       typecheck emp (Abs (Forall $ tvar 0) $ var 0)  `shouldBe` return (Forall (tvar 0) :-> Forall (tvar 0), Context [])
       tc [Universal] (Abs (Forall $ tvar 0) $ var 0) `shouldBe` return (Forall (tvar 0) :-> Forall (tvar 0), Context [Universal])
 
-      typecheck emp (Abs IntType $ Abs IntType $ var 0) `shouldBe` return (IntType :-> (IntType :-> IntType), Context [])
+      typecheck emp (Abs IntType $ Abs IntType $ var 0) `shouldBe` return (IntType :-> IntType :-> IntType, Context [])

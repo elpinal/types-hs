@@ -61,6 +61,8 @@ data Type
   | TRecord (Record Type)
   deriving (Eq, Show, Generic)
 
+infixr 0 :->
+
 newtype Variable = Variable Int
   deriving (Eq, Ord, Show)
 
