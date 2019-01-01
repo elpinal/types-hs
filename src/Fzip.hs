@@ -183,3 +183,9 @@ instance Typed Term where
         | ty11 == ty2 -> return ty12
         | otherwise   -> throwError $ TypeMismatch ty11 ty2
       _ -> throwError $ NotFunction ty1
+  typeOf (Let t1 t2) = do -- FIXME
+    ty1 <- typeOf t1
+    insert $ Term ty1
+    ty2 <- typeOf t2
+    pop
+    return ty2

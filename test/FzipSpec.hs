@@ -65,3 +65,8 @@ spec = do
 
       let bs = [Term $ tvar 1, Existential] in
         tc bs (Abs (tvar 1) (var 0) `App` var 0) `shouldBe` Left (IllFormedOnPureContext (tvar 1) $ Context bs)
+
+      typecheck emp (Let (var 0) $ var 0)               `shouldBe` Left (UnboundVariable $ Variable 0)
+      typecheck emp (Let (Abs IntType $ var 0) $ var 0) `shouldBe` return (IntType :-> IntType, emp)
+
+      tc [Existential] (Let (Abs IntType $ var 0) $ var 0) `shouldBe` return (IntType :-> IntType, Context [Existential])
