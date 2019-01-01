@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 module Fzip
@@ -24,6 +25,10 @@ import Control.Monad.Freer.State
 import Data.Coerce
 import qualified Data.Map.Lazy as Map
 import qualified Data.Set as Set
+
+import GHC.Generics
+
+import Index
 
 newtype Label = Label String
   deriving (Eq, Show)
@@ -54,7 +59,7 @@ data Type
   | Forall Type
   | Some Type
   | TRecord (Record Type)
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 newtype Variable = Variable Int
   deriving (Eq, Ord, Show)
@@ -67,7 +72,7 @@ data Binding
   | Universal
   | Existential
   | Def Type
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data TypeError
   = UnboundVariable Variable
@@ -77,8 +82,27 @@ data TypeError
   | NotPolymorphic Type
   | NotPure Context
   | NotTermBinding Binding
+  | NotTypeBinding Binding
   | IllFormedOnPureContext Type Context
   deriving (Eq, Show)
+
+instance Shift Binding
+
+instance Shift Type where
+  shiftAbove c d (Forall ty) = Forall $ shiftAbove (c + 1) d ty
+  shiftAbove c d (Some ty) = Some $ shiftAbove (c + 1) d ty
+  shiftAbove c d ty = to $ gShiftAbove c d $ from ty
+
+instance Shift Variable where
+  shiftAbove c d v @ (Variable n)
+    | c <= n    = Variable $ n + d
+    | otherwise = v
+
+instance Shift a => Shift (Record a) where
+  shiftAbove c d (Record m) = Record $ shiftAbove c d <$> m
+
+instance Shift Context where
+  shiftAbove c d (Context bs) = Context $ shiftAbove c d <$> bs
 
 drop0 :: Set.Set Variable -> Set.Set Variable
 drop0 = Set.mapMonotonic (Variable . subtract 1 . coerce) . Set.delete (Variable 0)
@@ -115,7 +139,8 @@ wfPure ty = do
     case b of
       Existential -> throwError $ IllFormedOnPureContext ty ctx
       Def ty' -> wfPure ty'
-      _ -> return ()
+      Universal -> return ()
+      Term _ -> throwError $ NotTypeBinding b
 
 type Env = '[State Context, Error TypeError]
 
@@ -132,6 +157,12 @@ lookupVar v = do
   wfPure ty
   return ty
 
+insert :: Member (State Context) r => Binding -> Eff r ()
+insert b = modify $ \(Context bs) -> shift 1 $ Context $ b : bs
+
+pop :: Member (State Context) r => Eff r ()
+pop = modify $ \(Context (_ : bs)) -> shift (-1) $ Context bs
+
 typecheck :: Context -> Term -> Either TypeError (Type, Context)
 typecheck ctx = run . runError . runState ctx . typeOf
 
@@ -140,3 +171,9 @@ class Typed a where
 
 instance Typed Term where
   typeOf (Var v) = lookupVar v
+  typeOf (Abs ty1 t) = do
+    wfPure ty1
+    insert $ Term ty1
+    ty2 <- typeOf t
+    pop
+    return $ ty1 :-> shift (-1) ty2
