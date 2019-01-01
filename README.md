@@ -6,6 +6,7 @@
 - Explicit substitutions
 - Type classes
 - Label-selective λ-calculus
+- Open existential types
 
 ## References
 
@@ -17,3 +18,5 @@
 - Philip Wadler and Stephen Blott. How to Make ad-hoc Polymorphism Less ad-hoc. Conference Record of the Sixteenth Annual ACM Symposium on Principles of Programming Languages, Austin, Texas, USA, January 11-13, 1989, ACM Press, pp. 60–76.
 - Mark P. Jones. A theory of qualified types. European Symposium on Programming, Rennes, France, Springer-Verlag Lecture Notes in Computer Science, 582, February 1992.
 - Jacques Garrigue and Hassan Aït-Kaci. The typed polymorphic label-selective lambda-calculus.  In Proc. of the 21st ACM Symposium on Principles of Programming Languages, pages 35-47, 1994.
+- Benoît Montagu and Didier Rémy. Modeling abstract types in modules with open existential types. POPL, pp. 354–365, 2009.
+- Benoît Montagu. Programming with first-class modules in a core language with subtyping, singleton kinds and open existential types. PhD dissertation, Ecole Polytechnique X, 2010.
