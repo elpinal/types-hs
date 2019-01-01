@@ -189,3 +189,8 @@ instance Typed Term where
     ty2 <- typeOf t2
     pop
     return ty2
+  typeOf (Exists t) = do
+    insert Existential
+    ty <- typeOf t
+    -- ?
+    return $ Some ty
