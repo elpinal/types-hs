@@ -331,3 +331,9 @@ instance Typed Term where
     case ty of
       TRecord r -> lookupLabel l r
       _         -> throwProblem $ NotRecord ty
+  typeOf (Poly t) = do
+    insert Universal
+    ty <- typeOf t
+    pop
+    pureCtx
+    return $ Forall ty

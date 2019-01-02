@@ -139,3 +139,10 @@ spec = do
         tc bs (Proj (var 0) l)  `shouldBe` return (IntType, Context bs)
         tc bs (Proj (var 0) l1) `shouldBe` return (Some IntType, Context bs)
         tc bs (Proj (var 0) l2) `shouldBe` Left (UnboundLabel l2)
+
+
+      tc [] (Poly $ var 0)                                      `shouldBe` Left (NotTermBinding Universal)
+      tc [Term IntType] (Poly $ var 1)                          `shouldBe` return (Forall IntType, Context [Term IntType])
+      tc [] (Poly $ Abs (tvar 0) $ var 0)                       `shouldBe` return (Forall $ tvar 0 :-> tvar 0, Context [])
+      tc [] (Poly $ Poly $ Abs (tvar 0) $ Abs (tvar 2) $ var 0) `shouldBe` return (Forall $ Forall $ tvar 0 :-> tvar 1 :-> tvar 1, Context [])
+      tc [] (Poly $ Poly $ Abs (tvar 0) $ Abs (tvar 2) $ var 1) `shouldBe` return (Forall $ Forall $ tvar 0 :-> tvar 1 :-> tvar 0, Context [])
