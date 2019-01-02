@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -35,7 +36,7 @@ newtype Label = Label String
   deriving (Eq, Show)
 
 newtype Record a = Record (Map.Map Label a)
-  deriving (Eq, Show, Foldable)
+  deriving (Eq, Show, Foldable, Functor)
 
 data Term
   = Var Variable
@@ -68,7 +69,7 @@ newtype Variable = Variable Int
   deriving (Eq, Ord, Show)
   deriving Shift via IndexedVariable
 
-newtype Context = Context [Binding]
+newtype Context = Context { getContext :: [Binding] }
   deriving (Eq, Show)
 
 data Binding
@@ -76,6 +77,9 @@ data Binding
   | Universal
   | Existential
   | Def Type
+
+  | Consumed
+  | Forbidden
   deriving (Eq, Show, Generic)
 
 data TypeError
@@ -87,7 +91,9 @@ data TypeError
   | NotPure Context
   | NotTermBinding Binding
   | NotTypeBinding Binding
+  | NotExistentialBinding Binding
   | IllFormedOnPureContext Type Context
+  | ForbiddenVariable Variable
   deriving (Eq, Show)
 
 instance Shift Binding
@@ -102,6 +108,18 @@ instance Shift a => Shift (Record a) where
 
 instance Shift Context where
   shiftAbove c d (Context bs) = Context $ shiftAbove c d <$> bs
+
+subst :: Int -> Type -> Type -> Type
+subst j by = walk 0
+  where
+    walk _ IntType       = IntType
+    walk c (ty1 :-> ty2) = walk c ty1 :-> walk c ty2
+    walk c ty @ (TVar (Variable n))
+      | n == j + c = shift c by
+      | otherwise  = ty
+    walk c (Forall ty) = Forall $ walk (c + 1) ty
+    walk c (Some ty)   = Some $ walk (c + 1) ty
+    walk c (TRecord r) = TRecord $ walk c <$> r
 
 drop0 :: Set.Set Variable -> Set.Set Variable
 drop0 = Set.mapMonotonic (Variable . subtract 1 . coerce) . Set.delete (Variable 0)
@@ -129,6 +147,12 @@ fromTermBinding :: Member (Error TypeError) r => Binding -> Eff r Type
 fromTermBinding (Term ty) = return ty
 fromTermBinding b         = throwError $ NotTermBinding b
 
+split :: Member (Error TypeError) r => Variable -> Context -> Eff r (Context, Binding, Context)
+split v @ (Variable n) (Context bs)
+  | 0 <= n && n < length bs = return (Context $ take n bs, bs !! n, shift (-n') $ Context $ drop n' bs)
+  | otherwise               = throwError $ UnboundVariable v
+    where n' = n + 1
+
 wfPure :: Members Env r => Type -> Eff r ()
 wfPure ty = do
   ctx <- get
@@ -139,6 +163,7 @@ wfPure ty = do
       Def ty'     -> wfPure ty'
       Universal   -> return ()
       Term _      -> throwError $ NotTypeBinding b
+      Forbidden   -> throwError $ ForbiddenVariable v
 
 type Env = '[State Context, Error TypeError]
 
@@ -194,3 +219,18 @@ instance Typed Term where
     ty <- typeOf t
     -- ?
     return $ Some ty
+  typeOf (Open v t) = do
+    ctx <- get
+    (ctx1, b, ctx2) <- split v ctx
+    case b of
+      Existential -> return ()
+      _ -> throwError $ NotExistentialBinding b
+    put ctx2
+    ty <- typeOf t
+    let n = length $ getContext ctx1
+    case shift n ty of
+      Some ty' -> do
+        insert Consumed
+        mapM_ insert $ reverse $ coerce ctx1
+        return $ subst 0 (TVar $ Variable n) ty'
+      _ -> throwError $ NotExistential ty
