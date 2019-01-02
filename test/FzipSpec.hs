@@ -3,6 +3,7 @@ module FzipSpec where
 import Test.Hspec
 
 import Data.Bifunctor
+import qualified Data.Map.Lazy as Map
 
 import Fzip
 
@@ -118,3 +119,20 @@ spec = do
 
       tc [Term $ Some $ tvar 0] (Restrict $ var 1)                     `shouldBe` return (Some $ tvar 0, Context [Term $ Some $ tvar 0])
       tc [Term $ Some $ tvar 0] (Restrict $ Open (Variable 0) $ var 1) `shouldBe` Left (ExistentialLeak $ tvar 0)
+
+
+      let l = Label "l0"
+      let l1 = Label "l1"
+      let l2 = Label "l2"
+
+      tc [Term IntType] (Proj (var 0) l)                   `shouldBe` Left (NotRecord IntType)
+      tc [Term $ TRecord $ Record mempty] (Proj (var 0) l) `shouldBe` Left (UnboundLabel l)
+
+      let bs = [Term $ TRecord $ Record $ Map.singleton l IntType] in do
+        tc bs (Proj (var 0) l)  `shouldBe` return (IntType, Context bs)
+        tc bs (Proj (var 0) l1) `shouldBe` Left (UnboundLabel l1)
+
+      let bs = [Term $ TRecord $ Record $ Map.fromList [(l, IntType), (l1, Some IntType)]] in do
+        tc bs (Proj (var 0) l)  `shouldBe` return (IntType, Context bs)
+        tc bs (Proj (var 0) l1) `shouldBe` return (Some IntType, Context bs)
+        tc bs (Proj (var 0) l2) `shouldBe` Left (UnboundLabel l2)

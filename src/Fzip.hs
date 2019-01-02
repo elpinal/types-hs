@@ -39,7 +39,7 @@ import GHC.Generics
 import Index
 
 newtype Label = Label String
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
   deriving Shift via Fixed Label
 
 newtype Record a = Record (Map.Map Label a)
@@ -94,10 +94,12 @@ data TypeError = TypeError [Reason] Problem
 
 data Problem
   = UnboundVariable Variable
+  | UnboundLabel Label
   | TypeMismatch Type Type
   | NotFunction Type
   | NotExistential Type
   | NotPolymorphic Type
+  | NotRecord Type
   | NotPure Context
   | NotTermBinding Binding
   | NotTypeBinding Binding
@@ -257,6 +259,9 @@ makeConsumed ns = do
       let g = appEndo $ foldMap Endo $ IntMap.adjust (const Consumed) <$> ns in
         IntMap.elems $ g m
 
+lookupLabel :: Member (Error TypeError) r => Label -> Record a -> Eff r a
+lookupLabel l (Record m) = maybe (throwProblem $ UnboundLabel l) return $ Map.lookup l m
+
 typecheck :: Context -> Term -> Either TypeError (Type, Context)
 typecheck ctx = run . runError . runState ctx . typeOf
 
@@ -320,3 +325,8 @@ instance Typed Term where
       throwProblem $ ExistentialLeak ty
     pop
     return $ shift (-1) ty
+  typeOf (Proj t l) = do
+    ty <- typeOf t
+    case ty of
+      TRecord r -> lookupLabel l r
+      _         -> throwProblem $ NotRecord ty
