@@ -16,6 +16,9 @@ module Fzip
   , Binding(..)
 
   , TypeError(..)
+  , Problem(..)
+  , Reason(..)
+  , fromProblem
 
   , typecheck
   ) where
@@ -82,7 +85,10 @@ data Binding
   | Forbidden
   deriving (Eq, Show, Generic)
 
-data TypeError
+data TypeError = TypeError [Reason] Problem
+  deriving (Eq, Show)
+
+data Problem
   = UnboundVariable Variable
   | TypeMismatch Type Type
   | NotFunction Type
@@ -95,6 +101,17 @@ data TypeError
   | IllFormedOnPureContext Type Context
   | ForbiddenVariable Variable
   deriving (Eq, Show)
+
+data Reason
+  = TypeCheckingVariable
+  | InContext Context
+  deriving (Eq, Show)
+
+throwProblem :: Member (Error TypeError) r => Problem -> Eff r a
+throwProblem = throwError . TypeError []
+
+fromProblem :: TypeError -> Problem
+fromProblem (TypeError _ p) = p
 
 instance Shift Binding
 
@@ -141,16 +158,16 @@ isPure (Context bs) = all f bs
 nth :: Member (Error TypeError) r => Variable -> Context -> Eff r Binding
 nth v @ (Variable n) (Context bs)
   | 0 <= n && n < length bs = return $ bs !! n
-  | otherwise               = throwError $ UnboundVariable v
+  | otherwise               = throwProblem $ UnboundVariable v
 
 fromTermBinding :: Member (Error TypeError) r => Binding -> Eff r Type
 fromTermBinding (Term ty) = return ty
-fromTermBinding b         = throwError $ NotTermBinding b
+fromTermBinding b         = throwProblem $ NotTermBinding b
 
 split :: Member (Error TypeError) r => Variable -> Context -> Eff r (Context, Binding, Context)
 split v @ (Variable n) (Context bs)
   | 0 <= n && n < length bs = return (Context $ take n bs, bs !! n, shift (-n') $ Context $ drop n' bs)
-  | otherwise               = throwError $ UnboundVariable v
+  | otherwise               = throwProblem $ UnboundVariable v
     where n' = n + 1
 
 wfPure :: Members Env r => Type -> Eff r ()
@@ -159,11 +176,11 @@ wfPure ty = do
   forM_ (ftv ty) $ \v -> do
     b <- nth v ctx
     case b of
-      Existential -> throwError $ IllFormedOnPureContext ty ctx
+      Existential -> throwProblem $ IllFormedOnPureContext ty ctx
       Def ty'     -> wfPure ty'
       Universal   -> return ()
-      Term _      -> throwError $ NotTypeBinding b
-      Forbidden   -> throwError $ ForbiddenVariable v
+      Term _      -> throwProblem $ NotTypeBinding b
+      Forbidden   -> throwProblem $ ForbiddenVariable v
 
 type Env = '[State Context, Error TypeError]
 
@@ -171,14 +188,17 @@ pureCtx :: Members Env r => Eff r ()
 pureCtx = do
   ctx <- get
   unless (isPure ctx) $
-    throwError $ NotPure ctx
+    throwProblem $ NotPure ctx
 
 lookupVar :: Members Env r => Variable -> Eff r Type
 lookupVar v = do
   ctx <- get
-  ty <- nth v ctx >>= fromTermBinding
-  wfPure ty
-  return ty
+  f ctx `ann` InContext ctx
+  where
+    f ctx = do
+      ty <- nth v ctx >>= fromTermBinding
+      wfPure ty
+      return ty
 
 insert :: Member (State Context) r => Binding -> Eff r ()
 insert b = modify $ \(Context bs) -> shift 1 $ Context $ b : bs
@@ -189,11 +209,14 @@ pop = modify $ \(Context (_ : bs)) -> shift (-1) $ Context bs
 typecheck :: Context -> Term -> Either TypeError (Type, Context)
 typecheck ctx = run . runError . runState ctx . typeOf
 
+ann :: Member (Error TypeError) r => Eff r a -> Reason -> Eff r a
+ann m r = m `catchError` \(TypeError rs p) -> throwError $ TypeError (r : rs) p
+
 class Typed a where
   typeOf :: Members Env r => a -> Eff r Type
 
 instance Typed Term where
-  typeOf (Var v) = lookupVar v
+  typeOf (Var v) = lookupVar v `ann` TypeCheckingVariable
   typeOf (Abs ty1 t) = do
     wfPure ty1
     insert $ Term ty1
@@ -206,8 +229,8 @@ instance Typed Term where
     case ty1 of
       ty11 :-> ty12
         | ty11 == ty2 -> return ty12
-        | otherwise   -> throwError $ TypeMismatch ty11 ty2
-      _ -> throwError $ NotFunction ty1
+        | otherwise   -> throwProblem $ TypeMismatch ty11 ty2
+      _ -> throwProblem $ NotFunction ty1
   typeOf (Let t1 t2) = do -- FIXME
     ty1 <- typeOf t1
     insert $ Term ty1
@@ -224,7 +247,7 @@ instance Typed Term where
     (ctx1, b, ctx2) <- split v ctx
     case b of
       Existential -> return ()
-      _ -> throwError $ NotExistentialBinding b
+      _ -> throwProblem $ NotExistentialBinding b
     put ctx2
     ty <- typeOf t
     let n = length $ getContext ctx1
@@ -233,4 +256,4 @@ instance Typed Term where
         insert Consumed
         mapM_ insert $ reverse $ coerce ctx1
         return $ subst 0 (TVar $ Variable n) ty'
-      _ -> throwError $ NotExistential ty
+      _ -> throwProblem $ NotExistential ty
