@@ -68,6 +68,10 @@ spec = do
       let bs = [Term $ tvar 1, Existential] in
         tc bs (Abs (tvar 1) (var 0) `App` var 0) `shouldBe` Left (IllFormedOnPureContext (tvar 1) $ Context bs)
 
+      let bs = [Existential, Term $ Some IntType, Term $ Some $ IntType :-> IntType] in do
+        tc bs (Open (Variable 0) (var 2) `App` Open (Variable 0) (var 1)) `shouldBe` Left (NotExistentialBinding Forbidden)
+        tc bs (Open (Variable 0) (var 2) `App` Let (var 1) (Open (Variable 1) $ var 0)) `shouldBe` Left (NotExistentialBinding Forbidden)
+
 
       tc [] (Let (var 0) $ var 0)               `shouldBe` Left (UnboundVariable $ Variable 0)
       tc [] (Let (Abs IntType $ var 0) $ var 0) `shouldBe` return (IntType :-> IntType, emp)
@@ -99,3 +103,7 @@ spec = do
 
       tc [Term $ tvar 1, Existential, Term $ Some IntType] (Open (Variable 1) $ var 2) `shouldBe` return (IntType, Context [Term $ tvar 1, Consumed, Term $ Some IntType])
       tc [Term $ tvar 1, Existential, Term $ Some $ tvar 0] (Open (Variable 1) $ var 2) `shouldBe` return (tvar 1, Context [Term $ tvar 1, Consumed, Term $ Some $ tvar 0])
+
+      let bs = [Term $ tvar 1, Existential, Term $ Some $ IntType :-> IntType, Term IntType] in
+        let bs' = [Term $ tvar 1, Consumed, Term $ Some $ IntType :-> IntType, Term IntType] in
+          tc bs (Let (Open (Variable 1) (var 2) `App` var 3) $ var 1) `shouldBe` return (tvar 1, Context bs')

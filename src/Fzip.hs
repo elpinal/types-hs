@@ -215,7 +215,13 @@ pop :: Member (State Context) r => Eff r ()
 pop = modify $ \(Context (_ : bs)) -> shift (-1) $ Context bs
 
 makeConsumedUniversal :: Member (State Context) r => Eff r [Int]
-makeConsumedUniversal = do
+makeConsumedUniversal = makeConsumedBinding Universal
+
+makeConsumedForbidden :: Member (State Context) r => Eff r [Int]
+makeConsumedForbidden = makeConsumedBinding Forbidden
+
+makeConsumedBinding :: Member (State Context) r => Binding -> Eff r [Int]
+makeConsumedBinding b0 = do
   Context bs <- get
   let (bs', ns) = run $ runState [] $ evalState (0 :: Int) $ f bs
   put $ Context bs'
@@ -228,7 +234,7 @@ makeConsumedUniversal = do
       modify (+ (1 :: Int))
       bs' <- f bs
       case b of
-        Consumed -> modify ((n :: Int) :) $> (Universal : bs')
+        Consumed -> modify ((n :: Int) :) $> (b0 : bs')
         _        -> return $ b : bs'
 
 makeConsumed :: Member (State Context) r => [Int] -> Eff r ()
@@ -260,7 +266,9 @@ instance Typed Term where
     return $ ty1 :-> shift (-1) ty2
   typeOf (App t1 t2) = do
     ty1 <- typeOf t1
+    xs <- makeConsumedForbidden
     ty2 <- typeOf t2
+    makeConsumed xs
     case ty1 of
       ty11 :-> ty12
         | ty11 == ty2 -> return ty12
