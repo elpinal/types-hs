@@ -112,6 +112,7 @@ data Problem
 data Reason
   = TypeCheckingVariable
   | InContext Context
+  | Instantiating Term
   deriving (Eq, Show)
 
 throwProblem :: Member (Error TypeError) r => Problem -> Eff r a
@@ -153,6 +154,9 @@ subst j by = walk 0
     walk c (Forall ty) = Forall $ walk (c + 1) ty
     walk c (Some ty)   = Some $ walk (c + 1) ty
     walk c (TRecord r) = TRecord $ walk c <$> r
+
+substTop :: Type -> Type -> Type
+substTop by = shift (-1) . subst 0 (shift 1 by)
 
 drop0 :: Set.Set Variable -> Set.Set Variable
 drop0 = Set.mapMonotonic (Variable . subtract 1 . coerce) . Set.delete (Variable 0)
@@ -262,6 +266,18 @@ makeConsumed ns = do
 lookupLabel :: Member (Error TypeError) r => Label -> Record a -> Eff r a
 lookupLabel l (Record m) = maybe (throwProblem $ UnboundLabel l) return $ Map.lookup l m
 
+wfType :: Members Env r => Type -> Eff r ()
+wfType IntType       = return ()
+wfType (ty1 :-> ty2) = mapM_ wfType [ty1, ty2]
+wfType (TVar v)      = get >>= \ctx -> nth v ctx >>= f
+  where
+    f b @ (Term _) = throwProblem $ NotTypeBinding b
+    f Forbidden    = throwProblem $ ForbiddenVariable v
+    f _            = return ()
+wfType (Forall ty)   = insert Universal >> wfType ty >> pop
+wfType (Some ty)     = insert Universal >> wfType ty >> pop
+wfType (TRecord r)   = mapM_ wfType r
+
 typecheck :: Context -> Term -> Either TypeError (Type, Context)
 typecheck ctx = run . runError . runState ctx . typeOf
 
@@ -337,3 +353,9 @@ instance Typed Term where
     pop
     pureCtx
     return $ Forall ty
+  typeOf (Inst t ty0) = do
+    ty <- typeOf t `ann` Instantiating t
+    wfType ty0
+    case ty of
+      Forall ty' -> return $ substTop ty0 ty'
+      _          -> throwProblem $ NotPolymorphic ty

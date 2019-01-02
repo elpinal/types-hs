@@ -146,3 +146,12 @@ spec = do
       tc [] (Poly $ Abs (tvar 0) $ var 0)                       `shouldBe` return (Forall $ tvar 0 :-> tvar 0, Context [])
       tc [] (Poly $ Poly $ Abs (tvar 0) $ Abs (tvar 2) $ var 0) `shouldBe` return (Forall $ Forall $ tvar 0 :-> tvar 1 :-> tvar 1, Context [])
       tc [] (Poly $ Poly $ Abs (tvar 0) $ Abs (tvar 2) $ var 1) `shouldBe` return (Forall $ Forall $ tvar 0 :-> tvar 1 :-> tvar 0, Context [])
+
+
+      tc [Term $ Forall IntType] (Inst (var 0) IntType)  `shouldBe` return (IntType, Context [Term $ Forall IntType])
+      tc [Term $ Forall IntType] (Inst (var 0) $ tvar 0) `shouldBe` Left (NotTypeBinding $ Term $ Forall IntType)
+      tc [Term $ Forall $ tvar 0] (Inst (var 0) IntType) `shouldBe` return (IntType, Context [Term $ Forall $ tvar 0])
+
+      let bs = [Term $ Forall $ Forall $ (tvar 0 :-> tvar 1 :-> tvar 3) :-> tvar 0, Universal] in do
+        tc bs (Inst (var 0) IntType)  `shouldBe` return (Forall $ (tvar 0 :-> IntType :-> tvar 2) :-> tvar 0, Context bs)
+        tc bs (Inst (var 0) $ tvar 1) `shouldBe` return (Forall $ (tvar 0 :-> tvar 2 :-> tvar 2) :-> tvar 0, Context bs)
