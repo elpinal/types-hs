@@ -107,3 +107,7 @@ spec = do
       let bs = [Term $ tvar 1, Existential, Term $ Some $ IntType :-> IntType, Term IntType] in
         let bs' = [Term $ tvar 1, Consumed, Term $ Some $ IntType :-> IntType, Term IntType] in
           tc bs (Let (Open (Variable 1) (var 2) `App` var 3) $ var 1) `shouldBe` return (tvar 1, Context bs')
+
+      tc [Term IntType, Existential] (Open (Variable 1) $ Abs IntType $ var 0)                                           `shouldBe` Left (NotExistential $ IntType :-> IntType)
+      tc [Term IntType, Existential, Term $ Some IntType] (Open (Variable 1) $ Abs (Some IntType) (var 0) `App` var 2)   `shouldBe` return (IntType, Context [Term IntType, Consumed, Term $ Some IntType])
+      tc [Term IntType, Existential, Term $ Some $ tvar 0] (Open (Variable 1) $ Abs (Some $ tvar 0) (var 0) `App` var 2) `shouldBe` return (tvar 1, Context [Term IntType, Consumed, Term $ Some $ tvar 0])

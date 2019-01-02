@@ -118,7 +118,15 @@ fromProblem :: TypeError -> Problem
 fromProblem (TypeError _ p) = p
 
 instance Shift Binding
-instance Shift Term
+
+instance Shift Term where
+  shiftAbove c d (Abs ty t)      = Abs (shiftAbove c d ty) $ shiftAbove (c + 1) d t
+  shiftAbove c d (Let t1 t2)     = Let (shiftAbove c d t1) $ shiftAbove c d t2
+  shiftAbove c d (Poly t)        = Poly $ shiftAbove (c + 1) d t
+  shiftAbove c d (Restrict t)    = Restrict $ shiftAbove (c + 1) d t
+  shiftAbove c d (Exists t)      = Exists $ shiftAbove (c + 1) d t
+  shiftAbove c d (WitDef v ty t) = WitDef (shiftAbove c d v) (shiftAbove c d ty) $ shiftAbove (c + 1) d t
+  shiftAbove c d t               = to $ gShiftAbove c d $ from t
 
 instance Shift Type where
   shiftAbove c d (Forall ty) = Forall $ shiftAbove (c + 1) d ty
