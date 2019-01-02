@@ -56,6 +56,9 @@ spec = do
 
       tc [] (Abs IntType $ Abs IntType $ var 0) `shouldBe` return (IntType :-> IntType :-> IntType, Context [])
 
+      tc [Existential, Term $ Some IntType] (Abs IntType $ Open (Variable 1) $ var 2) `shouldBe` Left (NotPure $ Context [Consumed, Term $ Some IntType])
+      tc [Existential, Term $ Some IntType] (Abs IntType $ var 2)                     `shouldBe` return (IntType :-> Some IntType, Context [Existential, Term $ Some IntType])
+
 
       tc [] (Abs IntType (var 0) `App` var 0)                             `shouldBe` Left (UnboundVariable $ Variable 0)
       tc [] (Abs (IntType :-> IntType) (var 0) `App` Abs IntType (var 0)) `shouldBe` return (IntType :-> IntType, emp)

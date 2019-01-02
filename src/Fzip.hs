@@ -168,7 +168,7 @@ ftv (TRecord r)   = foldMap ftv r
 isPure :: Context -> Bool
 isPure (Context bs) = all f bs
   where
-    f Existential = False
+    f Consumed = False
     f _ = True
 
 nth :: Member (Error TypeError) r => Variable -> Context -> Eff r Binding
@@ -278,6 +278,7 @@ instance Typed Term where
     insert $ Term ty1
     ty2 <- typeOf t
     pop
+    pureCtx
     return $ ty1 :-> shift (-1) ty2
   typeOf (App t1 t2) = do
     ty1 <- typeOf t1
