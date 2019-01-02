@@ -80,6 +80,15 @@ spec = do
       tc [Term $ tvar 1, Existential, Term $ Some $ tvar 0] (Let (var 2) $ var 1)                     `shouldBe` Left (IllFormedOnPureContext (tvar 2) $ Context [Term $ Some $ tvar 0, Term $ tvar 2, Existential, Term $ Some $ tvar 0])
 
 
+      tc [] (Exists $ var 0)             `shouldBe` Left (NotTermBinding Existential)
+      tc [Term IntType] (Exists $ var 1) `shouldBe` return (Some IntType, Context [Term IntType])
+
+      let bs = [Term $ Some $ tvar 0] in do
+        tc bs (Exists $ Open (Variable 0) $ var 1)                                   `shouldBe` return (Some $ tvar 0, Context bs)
+        tc bs (Exists $ Let (Open (Variable 0) $ var 1) $ var 0)                     `shouldBe` return (Some $ tvar 0, Context bs)
+        tc bs (Exists $ Let (Open (Variable 0) $ var 1) $ Open (Variable 1) $ var 2) `shouldBe` Left (NotExistentialBinding Universal)
+
+
       tc [] (Open (Variable 0) $ var 1)                          `shouldBe` Left (UnboundVariable $ Variable 0)
       tc [Universal] (Open (Variable 0) $ var 1)                 `shouldBe` Left (NotExistentialBinding Universal)
       tc [Existential] (Open (Variable 0) $ var 1)               `shouldBe` Left (UnboundVariable $ Variable 0)

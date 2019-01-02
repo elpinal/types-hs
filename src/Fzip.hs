@@ -277,7 +277,7 @@ instance Typed Term where
   typeOf (Exists t) = do
     insert Existential
     ty <- typeOf t
-    -- ?
+    pop
     return $ Some ty
   typeOf (Open v t) = do
     ctx <- get
