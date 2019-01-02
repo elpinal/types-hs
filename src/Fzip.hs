@@ -107,6 +107,7 @@ data Problem
   | IllFormedOnPureContext Type Context
   | ForbiddenVariable Variable
   | ExistentialLeak Type
+  | NotCoercible Type Type
   deriving (Eq, Show)
 
 data Reason
@@ -278,6 +279,44 @@ wfType (Forall ty)   = insert Universal >> wfType ty >> pop
 wfType (Some ty)     = insert Universal >> wfType ty >> pop
 wfType (TRecord r)   = mapM_ wfType r
 
+coercible :: Members Env r => Type -> Type -> Eff r ()
+coercible IntType IntType                 = return ()
+coercible (ty11 :-> ty12) (ty21 :-> ty22) = coercible ty11 ty21 >> coercible ty12 ty22
+coercible (TVar v1) (TVar v2)
+  | v1 == v2 = return ()
+  | otherwise = do
+  m1 <- lookupDef v1
+  m2 <- lookupDef v2
+  case (m1, m2) of
+    (Nothing, Nothing) -> throwProblem $ NotCoercible (TVar v1) (TVar v2)
+    (Just ty, Nothing) -> coercible ty $ TVar v2
+    (Nothing, Just ty) -> coercible ty $ TVar v1
+    (Just ty1, Just ty2) -> coercible ty1 ty2
+coercible (TVar v) ty0 = do
+  m <- lookupDef v
+  case m of
+    Nothing -> throwProblem $ NotCoercible (TVar v) ty0
+    Just ty -> coercible ty ty0
+coercible ty0 (TVar v) = do
+  m <- lookupDef v
+  case m of
+    Nothing -> throwProblem $ NotCoercible ty0 $ TVar v
+    Just ty -> coercible ty0 ty
+coercible (Forall ty1) (Forall ty2) = insert Universal >> coercible ty1 ty2 >> pop
+coercible (Some ty1) (Some ty2)     = insert Universal >> coercible ty1 ty2 >> pop
+coercible (TRecord r1) (TRecord r2) = sequence_ $ Map.intersectionWith coercible (coerce r1) (coerce r2)
+coercible ty1 ty2                   = throwProblem $ NotCoercible ty1 ty2
+
+lookupDef :: Members Env r => Variable -> Eff r (Maybe Type)
+lookupDef v = do
+  ctx <- get
+  b <- nth v ctx
+  case b of
+    Def ty      -> return $ return ty
+    Universal   -> return Nothing
+    Existential -> return Nothing
+    _           -> throwProblem $ NotTypeBinding b
+
 typecheck :: Context -> Term -> Either TypeError (Type, Context)
 typecheck ctx = run . runError . runState ctx . typeOf
 
@@ -359,3 +398,7 @@ instance Typed Term where
     case ty of
       Forall ty' -> return $ substTop ty0 ty'
       _          -> throwProblem $ NotPolymorphic ty
+  typeOf (Coerce t ty) = do
+    ty' <- typeOf t
+    coercible ty' ty
+    return ty

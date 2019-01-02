@@ -155,3 +155,15 @@ spec = do
       let bs = [Term $ Forall $ Forall $ (tvar 0 :-> tvar 1 :-> tvar 3) :-> tvar 0, Universal] in do
         tc bs (Inst (var 0) IntType)  `shouldBe` return (Forall $ (tvar 0 :-> IntType :-> tvar 2) :-> tvar 0, Context bs)
         tc bs (Inst (var 0) $ tvar 1) `shouldBe` return (Forall $ (tvar 0 :-> tvar 2 :-> tvar 2) :-> tvar 0, Context bs)
+
+
+      tc [Term IntType] (Coerce (var 0) IntType)                              `shouldBe` return (IntType, Context [Term IntType])
+      tc [Term IntType, Universal] (Coerce (var 0) $ tvar 1)                  `shouldBe` Left (NotCoercible IntType $ tvar 1)
+      tc [Term $ tvar 1, Universal] (Coerce (var 0) $ tvar 1)                 `shouldBe` return (tvar 1, Context [Term $ tvar 1, Universal])
+      tc [Term $ tvar 1, Def IntType] (Coerce (var 0) IntType)                `shouldBe` return (IntType, Context [Term $ tvar 1, Def IntType])
+      tc [Term $ tvar 1, Def IntType] (Coerce (var 0) $ tvar 1)               `shouldBe` return (tvar 1, Context [Term $ tvar 1, Def IntType])
+      tc [Term $ tvar 1, Def $ tvar 2, Universal] (Coerce (var 0) $ tvar 2)   `shouldBe` return (tvar 2, Context [Term $ tvar 1, Def $ tvar 2, Universal])
+      tc [Term $ tvar 1, Def $ tvar 2, Universal] (Coerce (var 0) $ tvar 1)   `shouldBe` return (tvar 1, Context [Term $ tvar 1, Def $ tvar 2, Universal])
+      tc [Term $ tvar 1, Def $ tvar 2, Def IntType] (Coerce (var 0) IntType)  `shouldBe` return (IntType, Context [Term $ tvar 1, Def $ tvar 2, Def IntType])
+      tc [Term $ tvar 1, Def $ tvar 2, Def IntType] (Coerce (var 0) $ tvar 2) `shouldBe` return (tvar 2, Context [Term $ tvar 1, Def $ tvar 2, Def IntType])
+      tc [Term $ tvar 1, Def $ tvar 2, Def IntType] (Coerce (var 0) $ tvar 1) `shouldBe` return (tvar 1, Context [Term $ tvar 1, Def $ tvar 2, Def IntType])
