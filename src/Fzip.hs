@@ -28,7 +28,10 @@ import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Control.Monad.Freer.State
 import Data.Coerce
+import Data.Functor
+import qualified Data.IntMap.Lazy as IntMap
 import qualified Data.Map.Lazy as Map
+import Data.Monoid
 import qualified Data.Set as Set
 
 import GHC.Generics
@@ -211,6 +214,33 @@ insertWithoutShift (Context cs) = modify $ \(Context bs) -> Context $ cs ++ bs
 pop :: Member (State Context) r => Eff r ()
 pop = modify $ \(Context (_ : bs)) -> shift (-1) $ Context bs
 
+makeConsumedUniversal :: Member (State Context) r => Eff r [Int]
+makeConsumedUniversal = do
+  Context bs <- get
+  let (bs', ns) = run $ runState [] $ evalState (0 :: Int) $ f bs
+  put $ Context bs'
+  return ns
+  where
+    f :: Members '[State Int, State [Int]] r => [Binding] -> Eff r [Binding]
+    f []       = return []
+    f (b : bs) = do
+      n <- get
+      modify (+ (1 :: Int))
+      bs' <- f bs
+      case b of
+        Consumed -> modify ((n :: Int) :) $> (Universal : bs')
+        _        -> return $ b : bs'
+
+makeConsumed :: Member (State Context) r => [Int] -> Eff r ()
+makeConsumed ns = do
+  Context bs <- get
+  put $ Context $ f bs
+  where
+    f bs =
+      let m = IntMap.fromAscList $ zip [0 ..] bs in
+      let g = appEndo $ foldMap Endo $ IntMap.adjust (const Consumed) <$> ns in
+        IntMap.elems $ g m
+
 typecheck :: Context -> Term -> Either TypeError (Type, Context)
 typecheck ctx = run . runError . runState ctx . typeOf
 
@@ -236,12 +266,14 @@ instance Typed Term where
         | ty11 == ty2 -> return ty12
         | otherwise   -> throwProblem $ TypeMismatch ty11 ty2
       _ -> throwProblem $ NotFunction ty1
-  typeOf (Let t1 t2) = do -- FIXME
+  typeOf (Let t1 t2) = do
     ty1 <- typeOf t1
+    xs <- makeConsumedUniversal
     insert $ Term ty1
     ty2 <- typeOf t2
     pop
-    return ty2
+    makeConsumed xs
+    return $ shift (-1) ty2
   typeOf (Exists t) = do
     insert Existential
     ty <- typeOf t

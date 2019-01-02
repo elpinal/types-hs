@@ -74,6 +74,11 @@ spec = do
 
       tc [Existential] (Let (Abs IntType $ var 0) $ var 0) `shouldBe` return (IntType :-> IntType, Context [Existential])
 
+      tc [Existential, Term $ Some IntType] (Let (Open (Variable 0) $ var 1) $ var 0)                 `shouldBe` return (IntType, Context [Consumed, Term $ Some IntType])
+      tc [Existential, Term $ Some $ tvar 0] (Let (Open (Variable 0) $ var 1) $ var 0)                `shouldBe` return (tvar 0, Context [Consumed, Term $ Some $ tvar 0])
+      tc [Term $ tvar 1, Existential, Term $ Some $ tvar 0] (Let (Open (Variable 1) $ var 2) $ var 1) `shouldBe` return (tvar 1, Context [Term $ tvar 1, Consumed, Term $ Some $ tvar 0])
+      tc [Term $ tvar 1, Existential, Term $ Some $ tvar 0] (Let (var 2) $ var 1)                     `shouldBe` Left (IllFormedOnPureContext (tvar 2) $ Context [Term $ Some $ tvar 0, Term $ tvar 2, Existential, Term $ Some $ tvar 0])
+
 
       tc [] (Open (Variable 0) $ var 1)                          `shouldBe` Left (UnboundVariable $ Variable 0)
       tc [Universal] (Open (Variable 0) $ var 1)                 `shouldBe` Left (NotExistentialBinding Universal)
