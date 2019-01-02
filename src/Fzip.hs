@@ -104,6 +104,7 @@ data Problem
   | NotExistentialBinding Binding
   | IllFormedOnPureContext Type Context
   | ForbiddenVariable Variable
+  | ExistentialLeak Type
   deriving (Eq, Show)
 
 data Reason
@@ -312,3 +313,10 @@ instance Typed Term where
         insertWithoutShift ctx1
         return $ subst 0 (TVar $ Variable n) ty'
       _ -> throwProblem $ NotExistential ty
+  typeOf (Restrict t) = do
+    insert Existential
+    ty <- typeOf t
+    when (Variable 0 `Set.member` ftv ty) $
+      throwProblem $ ExistentialLeak ty
+    pop
+    return $ shift (-1) ty

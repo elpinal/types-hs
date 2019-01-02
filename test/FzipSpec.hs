@@ -111,3 +111,10 @@ spec = do
       tc [Term IntType, Existential] (Open (Variable 1) $ Abs IntType $ var 0)                                           `shouldBe` Left (NotExistential $ IntType :-> IntType)
       tc [Term IntType, Existential, Term $ Some IntType] (Open (Variable 1) $ Abs (Some IntType) (var 0) `App` var 2)   `shouldBe` return (IntType, Context [Term IntType, Consumed, Term $ Some IntType])
       tc [Term IntType, Existential, Term $ Some $ tvar 0] (Open (Variable 1) $ Abs (Some $ tvar 0) (var 0) `App` var 2) `shouldBe` return (tvar 1, Context [Term IntType, Consumed, Term $ Some $ tvar 0])
+
+
+      tc [] (Restrict $ var 0)               `shouldBe` Left (NotTermBinding Existential)
+      tc [] (Restrict $ Abs IntType $ var 0) `shouldBe` return (IntType :-> IntType, emp)
+
+      tc [Term $ Some $ tvar 0] (Restrict $ var 1)                     `shouldBe` return (Some $ tvar 0, Context [Term $ Some $ tvar 0])
+      tc [Term $ Some $ tvar 0] (Restrict $ Open (Variable 0) $ var 1) `shouldBe` Left (ExistentialLeak $ tvar 0)
