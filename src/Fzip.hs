@@ -37,6 +37,7 @@ import Index
 
 newtype Label = Label String
   deriving (Eq, Show)
+  deriving Shift via Fixed Label
 
 newtype Record a = Record (Map.Map Label a)
   deriving (Eq, Show, Foldable, Functor)
@@ -55,7 +56,7 @@ data Term
   | Coerce Term Type
   | Exists Term
   | WitDef Variable Type Term
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data Type
   = IntType
@@ -114,6 +115,7 @@ fromProblem :: TypeError -> Problem
 fromProblem (TypeError _ p) = p
 
 instance Shift Binding
+instance Shift Term
 
 instance Shift Type where
   shiftAbove c d (Forall ty) = Forall $ shiftAbove (c + 1) d ty
@@ -203,6 +205,9 @@ lookupVar v = do
 insert :: Member (State Context) r => Binding -> Eff r ()
 insert b = modify $ \(Context bs) -> shift 1 $ Context $ b : bs
 
+insertWithoutShift :: Member (State Context) r => Context -> Eff r ()
+insertWithoutShift (Context cs) = modify $ \(Context bs) -> Context $ cs ++ bs
+
 pop :: Member (State Context) r => Eff r ()
 pop = modify $ \(Context (_ : bs)) -> shift (-1) $ Context bs
 
@@ -249,11 +254,12 @@ instance Typed Term where
       Existential -> return ()
       _ -> throwProblem $ NotExistentialBinding b
     put ctx2
-    ty <- typeOf t
     let n = length $ getContext ctx1
+    ty <- typeOf $ shift ((-n) - 1) t
     case shift n ty of
       Some ty' -> do
         insert Consumed
-        mapM_ insert $ reverse $ coerce ctx1
+        modify $ \ctx0 -> shift n (ctx0 :: Context)
+        insertWithoutShift ctx1
         return $ subst 0 (TVar $ Variable n) ty'
       _ -> throwProblem $ NotExistential ty
