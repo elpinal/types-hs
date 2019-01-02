@@ -186,6 +186,7 @@ wfPure ty = do
       Universal   -> return ()
       Term _      -> throwProblem $ NotTypeBinding b
       Forbidden   -> throwProblem $ ForbiddenVariable v
+      Consumed    -> error $ "[bug] unexpected consumed type variable: " ++ show v
 
 type Env = '[State Context, Error TypeError]
 
